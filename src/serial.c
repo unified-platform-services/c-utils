@@ -31,6 +31,8 @@
 #include <utils/serial.h>
 #include <utils/memory.h>
 
+#include <hurd/ioctl.h>
+
 struct serial *serial_open(const char *device, int baud, const char *mode)
 {
 	int status, tmp;
@@ -94,7 +96,7 @@ struct serial *serial_open(const char *device, int baud, const char *mode)
 	}
 
 	ctx = safe_calloc(1, sizeof(struct serial));
-	ctx->fd = open(device, O_RDWR | O_NOCTTY | O_NDELAY);
+	ctx->fd = open(device, O_RDWR | O_NOCTTY | _FNDELAY);
 	if (ctx->fd == -1) {
 		perror("unable to open comport");
 		goto error;
@@ -111,10 +113,11 @@ struct serial *serial_open(const char *device, int baud, const char *mode)
 		perror("unable to read portsettings");
 		goto error;
 	}
-
+	
 	ctx->new_termios.c_cflag = cflags | CLOCAL | CREAD;
-	if (flow_control)
-		ctx->new_termios.c_cflag |= CRTSCTS;
+	// TODO: Skip flow control for ESP IDF compiling
+	// if (flow_control)
+	// 	ctx->new_termios.c_cflag |= CRTSCTS;
 	ctx->new_termios.c_iflag = ignore_parity ? IGNPAR : INPCK;
 	ctx->new_termios.c_oflag = 0;
 	ctx->new_termios.c_lflag = 0;
