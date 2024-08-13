@@ -3,6 +3,11 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+
+/* To disable warnings about use of strncpy and suggestions to use the more
+ * secure variant strncpy_s in MSVC */
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,6 +19,14 @@
 #endif
 
 #include <utils/logger.h>
+
+#if (defined(_WIN32) || defined(_WIN64))
+/*
+ * For MSVC, we are expected use _write() and the type of len is unsigned int
+ * instead of size_t in unix.
+ */
+#define write(fd, data, len) (size_t)_write((fd), (data), (unsigned int)(len))
+#endif
 
 #define RED   "\x1B[31m"
 #define GRN   "\x1B[32m"
@@ -46,7 +59,7 @@ static const char *log_level_names[LOG_MAX_LEVEL] = {
 
 static inline void logger_log_set_color(logger_t *ctx, const char *color)
 {
-	int ret, len;
+	size_t ret, len;
 
 	if (ctx->flags & LOGGER_FLAG_NO_COLORS)
 		return;
@@ -57,24 +70,6 @@ static inline void logger_log_set_color(logger_t *ctx, const char *color)
 		assert(ret == len);
 		ARG_UNUSED(ret); /* squash warning in Release builds */
 	}
-}
-
-static const char *get_rel_path(logger_t *ctx, const char *abs_path)
-{
-	const char *p, *q;
-
-	if (!ctx->root_path || abs_path[0] != '/')
-		return abs_path;
-
-	p = ctx->root_path;
-	q = abs_path;
-	while (*p != '\0' && *q != '\0' && *p == *q) {
-		p++;
-		q++;
-	}
-	while (*q != '\0' && *q == '/')
-		q++;
-	return q;
 }
 
 static const char *get_tstamp()
@@ -107,16 +102,16 @@ int __logger_log(logger_t *ctx, int log_level, const char *file, unsigned long l
 	if (!ctx)
 		ctx = &default_logger;
 
+	file = strrchr(file, PATH_SEPARATOR) + 1;
 	if (!ctx->cb) {
 		if (log_level < LOG_EMERG ||
 		    log_level >= LOG_MAX_LEVEL ||
 		    log_level > ctx->log_level)
 			return 0;
 		/* print module and log_level prefix */
-		len = snprintf(buf, LOG_BUF_LEN, "%s: [%s] [%s] %s:%lu: ",
-			       ctx->name, get_tstamp(),
-			       log_level_names[log_level],
-			       get_rel_path(ctx, file), line);
+		len = snprintf(buf, LOG_BUF_LEN, "%s: %s %11s:%-4lu [%s] ",
+			       ctx->name, get_tstamp(), file, line,
+			       log_level_names[log_level]);
 		if (len > LOG_BUF_LEN)
 			goto out;
 	}
@@ -136,7 +131,7 @@ out:
 	len = terminate_log_line(buf, len);
 
 	if (ctx->cb) {
-		ctx->cb(log_level, get_rel_path(ctx, file), line, buf);
+		ctx->cb(log_level, file, line, buf);
 	} else {
 		logger_log_set_color(ctx, log_level_colors[log_level]);
 		if (ctx->file)
