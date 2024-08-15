@@ -72,10 +72,13 @@ static inline void logger_log_set_color(logger_t *ctx, const char *color)
 	}
 }
 
+/* XXX: To be compiled with App project  */
+extern int rtc_time_to_iso(char *iso8601, size_t buffer_size);
 static const char *get_tstamp()
 {
 	static char time_buf[24];
-	add_iso8601_utc_datetime(time_buf, sizeof(time_buf));
+	rtc_time_to_iso(time_buf, sizeof(time_buf));
+	// add_iso8601_utc_datetime(time_buf, sizeof(time_buf));
 	return time_buf;
 }
 

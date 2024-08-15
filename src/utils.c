@@ -85,6 +85,7 @@ void hexdump(const void *p, size_t len, const char *fmt, ...)
 	printf("\n");
 }
 
+#if 0
 #if (defined(_WIN32) || defined(_WIN64))
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -188,6 +189,7 @@ int64_t millis_since(int64_t last)
 {
 	return millis_now() - last;
 }
+#endif
 
 #if (defined(__linux__) || defined(__APPLE__)) && defined(__GLIBC__)
 #include <execinfo.h>
