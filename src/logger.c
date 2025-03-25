@@ -81,7 +81,11 @@ extern int rtc_time_to_iso(char *iso8601, size_t buffer_size);
 static const char *get_tstamp()
 {
 	static char time_buf[24];
+#if (CONFIG_EDGE_LPR == 1) 
+	memset(time_buf, '*', sizeof(time_buf));
+#else
 	rtc_time_to_iso(time_buf, sizeof(time_buf));
+#endif
 	// add_iso8601_utc_datetime(time_buf, sizeof(time_buf));
 	return time_buf;
 }
