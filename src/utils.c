@@ -178,6 +178,7 @@ int add_iso8601_utc_datetime(char* buf, size_t size) {
 	ARG_UNUSED(size);
 	return 0;
 }
+#elif defined(__XC8__)
 
 #else
 
@@ -185,6 +186,7 @@ int add_iso8601_utc_datetime(char* buf, size_t size) {
 
 #endif
 
+#ifndef __XC8__
 int64_t usec_now()
 {
 	int64_t usec;
