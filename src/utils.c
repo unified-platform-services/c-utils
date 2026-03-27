@@ -85,7 +85,6 @@ void hexdump(const void *p, size_t len, const char *fmt, ...)
 	printf("\n");
 }
 
-#if 0
 #if (defined(_WIN32) || defined(_WIN64))
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
@@ -149,7 +148,7 @@ int add_iso8601_utc_datetime(char *buf, size_t size)
 	return strftime(buf, size, "%Y-%m-%dT%H:%M:%SZ", &timeinfo);
 }
 
-#elif defined(__BARE_METAL__)
+#elif defined(__BARE_METAL__) || defined(__XC8__)
 
 #ifndef _TIMEVAL_DEFINED
 struct timeval {
@@ -178,50 +177,12 @@ int add_iso8601_utc_datetime(char* buf, size_t size) {
 	ARG_UNUSED(size);
 	return 0;
 }
-#elif defined(__XC8__)
-
 #else
 
 #error Platform test failed
 
 #endif
 
-#ifndef __XC8__
-int64_t usec_now()
-{
-	int64_t usec;
-	struct timeval tv;
-
-	gettimeofday(&tv, NULL);
-	usec = tv.tv_sec * 1000LL * 1000LL + tv.tv_usec;
-
-	return usec;
-}
-
-void get_time(uint32_t *seconds, uint32_t *micro_seconds)
-{
-	struct timeval tv;
-
-	gettimeofday(&tv, NULL);
-	*seconds = tv.tv_sec;
-	*micro_seconds = tv.tv_usec;
-}
-
-int64_t usec_since(int64_t last)
-{
-	return usec_now() - last;
-}
-
-int64_t millis_now()
-{
-	return (int64_t)(usec_now() / 1000LL);
-}
-
-int64_t millis_since(int64_t last)
-{
-	return millis_now() - last;
-}
-#endif
 
 #if (defined(__linux__) || defined(__APPLE__)) && defined(__GLIBC__)
 #include <execinfo.h>
