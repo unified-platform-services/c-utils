@@ -159,6 +159,15 @@ extern "C" {
 #define __unreachable()         __builtin_unreachable()
 #define __format_printf(x, y)   __attribute__((format(printf, x, y)))
 
+#elif defined (__XC8__)
+#define __format_printf(x, y)   __attribute__((format(printf, x, y)))
+#define __noreturn              __attribute__((noreturn))
+#define __weak                  __attribute__((weak))
+// #define __unreachable()         __builtin_unreachable()
+#define __unreachable() 
+#define likely(p)               (p)
+#define unlikely(p)             (p)
+#define PATH_SEPARATOR          '/'
 #else
 
 #define __format_printf(x, y)   __attribute__((format(printf, x, y)))
