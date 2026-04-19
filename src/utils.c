@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2024 Siddharth Chandrasekaran <sidcha.dev@gmail.com>
+ * Copyright (c) 2020-2026 Siddharth Chandrasekaran <sidcha.dev@gmail.com>
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -11,6 +11,15 @@
 #include <stdlib.h>
 
 #include <utils/utils.h>
+
+#if !defined (__XC8__)
+#define _IS_ENABLED_SELFTEST_ON 1
+_Static_assert(IS_ENABLED(_IS_ENABLED_SELFTEST_ON) == 1,
+	       "IS_ENABLED(): defined-as-1 flag must evaluate to 1");
+_Static_assert(IS_ENABLED(_IS_ENABLED_SELFTEST_OFF) == 0,
+	       "IS_ENABLED(): undefined flag must evaluate to 0");
+#undef _IS_ENABLED_SELFTEST_ON
+#endif
 
 int randint(int limit)
 {
@@ -131,7 +140,7 @@ int add_iso8601_utc_datetime(char* buf, size_t size)
 	return r;
 }
 
-#elif defined(__linux__) || defined(__APPLE__)
+#elif defined(__linux__) || defined(__APPLE__) || defined(ESP_PLATFORM)
 
 #include <sys/time.h>
 #include <time.h>
@@ -146,6 +155,47 @@ int add_iso8601_utc_datetime(char *buf, size_t size)
 	gmtime_r(&now, &timeinfo);
 
 	return strftime(buf, size, "%Y-%m-%dT%H:%M:%SZ", &timeinfo);
+}
+
+#elif defined(ARDUINO)
+
+#ifndef _TIMEVAL_DEFINED
+struct timeval {
+	long tv_sec;  // seconds since epoch
+	long tv_usec; // microseconds
+};
+#endif
+
+#ifndef _TIMEZONE_DEFINED
+struct timezone {
+	int tz_minuteswest; // minutes west of UTC
+	int tz_dsttime;     // daylight saving time flag
+};
+#endif
+
+int gettimeofday(struct timeval * tp, struct timezone * tzp)
+{
+	ARG_UNUSED(tzp);
+	tp->tv_sec = micros() / 1000000;
+	tp->tv_usec = micros() % 1000000;
+	return 0;
+}
+
+int add_iso8601_utc_datetime(char* buf, size_t size) {
+	ARG_UNUSED(buf);
+	ARG_UNUSED(size);
+	return 0;
+}
+
+#elif defined(__ZEPHYR__)
+
+#include <sys/time.h>
+
+int add_iso8601_utc_datetime(char *buf, size_t size)
+{
+	ARG_UNUSED(buf);
+	ARG_UNUSED(size);
+	return 0;
 }
 
 #elif defined(__BARE_METAL__)
@@ -178,6 +228,33 @@ int add_iso8601_utc_datetime(char* buf, size_t size) {
 	return 0;
 }
 #elif defined(__XC8__)
+#ifndef _TIMEVAL_DEFINED
+struct timeval {
+	long tv_sec;  // seconds since epoch
+	long tv_usec; // microseconds
+};
+#endif
+
+#ifndef _TIMEZONE_DEFINED
+struct timezone {
+	int tz_minuteswest; // minutes west of UTC
+	int tz_dsttime;     // daylight saving time flag
+};
+#endif
+
+int gettimeofday(struct timeval * tp, struct timezone * tzp)
+{
+	ARG_UNUSED(tzp);
+	tp->tv_sec = 0;
+	tp->tv_usec = 0;
+	return 0;
+}
+
+int add_iso8601_utc_datetime(char* buf, size_t size) {
+	ARG_UNUSED(buf);
+	ARG_UNUSED(size);
+	return 0;
+}
 
 #else
 
@@ -185,16 +262,15 @@ int add_iso8601_utc_datetime(char* buf, size_t size) {
 
 #endif
 
-#ifndef __XC8__
-int64_t usec_now()
+tick_t usec_now()
 {
-	int64_t usec;
+	uint64_t usec;
 	struct timeval tv;
 
 	gettimeofday(&tv, NULL);
 	usec = tv.tv_sec * 1000LL * 1000LL + tv.tv_usec;
 
-	return usec;
+	return (tick_t)usec;
 }
 
 void get_time(uint32_t *seconds, uint32_t *micro_seconds)
@@ -206,21 +282,20 @@ void get_time(uint32_t *seconds, uint32_t *micro_seconds)
 	*micro_seconds = tv.tv_usec;
 }
 
-int64_t usec_since(int64_t last)
+tick_t usec_since(tick_t last)
 {
 	return usec_now() - last;
 }
 
-int64_t millis_now()
+tick_t millis_now()
 {
-	return (int64_t)(usec_now() / 1000LL);
+	return (tick_t)(usec_now() / 1000U);
 }
 
-int64_t millis_since(int64_t last)
+tick_t millis_since(tick_t last)
 {
 	return millis_now() - last;
 }
-#endif
 
 #if (defined(__linux__) || defined(__APPLE__)) && defined(__GLIBC__)
 #include <execinfo.h>

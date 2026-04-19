@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2024 Siddharth Chandrasekaran <sidcha.dev@gmail.com>
+ * Copyright (c) 2020-2026 Siddharth Chandrasekaran <sidcha.dev@gmail.com>
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -51,7 +51,9 @@ extern "C" {
 #define STRINGIFY(x) #x
 #endif
 
+#ifndef ROUND_UP
 #define ROUND_UP(x, y) ((x + y - 1) & ~ (y - 1))
+#endif
 
 #define MATH_MOD(a, b)                 (((a % b) + b) % b)
 
@@ -65,20 +67,26 @@ extern "C" {
 
 #define OFFSET_OF(type, field) (size_t)(&((type *)(0))->field)
 
+#ifndef CONTAINER_OF
 #define CONTAINER_OF(ptr, type, field) \
         ((type *)(((char *)(ptr)) - OFFSET_OF(type, field)))
+#endif
 
+#ifndef MAX
 #define MAX(a,b) ({ \
 		__typeof__ (a) _a = (a); \
 		__typeof__ (b) _b = (b); \
 		_a > _b ? _a : _b; \
 	})
+#endif
 
+#ifndef MIN
 #define MIN(a,b) ({ \
 		__typeof__ (a) _a = (a); \
 		__typeof__ (b) _b = (b); \
 		_a > _b ? _b : _a; \
 	})
+#endif
 
 #define SWAP(a,b) { \
 		__typeof__ (a) _tmp; \
@@ -102,16 +110,20 @@ extern "C" {
 #define ABS(x)		((x) >= 0  ? (x) : -(x))
 
 /* config_enabled() from the kernel */
+#ifndef IS_ENABLED
 #define __IS_ENABLED1(x)             __IS_ENABLED2(__XXXX ## x)
 #define __XXXX1                       __YYYY,
 #define __IS_ENABLED2(y)             __IS_ENABLED3(y 1, 0)
 #define __IS_ENABLED3(_i, val, ...)   val
 
 #define IS_ENABLED(x)                 __IS_ENABLED1(x)
+#endif
 
 /* gcc attribute shorthands */
 #ifndef __fallthrough
-#if __GNUC__ >= 7
+#if defined (__XC8__)
+#define __fallthrough
+#elif __GNUC__ >= 7 || defined(__clang__)
 #define __fallthrough        __attribute__((fallthrough))
 #else
 #define __fallthrough
@@ -146,7 +158,11 @@ extern "C" {
 #define __format_printf(x, y)
 #define __noreturn              __declspec(noreturn)
 #define __weak
+#if defined(_MSC_VER)
 #define __unreachable()         __assume(0)
+#else
+#define __unreachable()         __builtin_unreachable()
+#endif
 #define likely(p)               (p)
 #define unlikely(p)             (p)
 #define PATH_SEPARATOR          '\\'
@@ -158,12 +174,14 @@ extern "C" {
 #define PATH_SEPARATOR          '/'
 #define __unreachable()         __builtin_unreachable()
 #define __format_printf(x, y)   __attribute__((format(printf, x, y)))
+#ifndef __noreturn
+#define __noreturn              __attribute__((noreturn))
+#endif
 
 #elif defined (__XC8__)
 #define __format_printf(x, y)   __attribute__((format(printf, x, y)))
 #define __noreturn              __attribute__((noreturn))
 #define __weak                  __attribute__((weak))
-// #define __unreachable()         __builtin_unreachable()
 #define __unreachable() 
 #define likely(p)               (p)
 #define unlikely(p)             (p)
@@ -178,6 +196,23 @@ extern "C" {
 #define likely(p)               __builtin_expect(!!(p), 1)
 #define unlikely(p)             __builtin_expect(!!(p), 0)
 #define PATH_SEPARATOR          '/'
+#endif
+
+#if defined(__BARE_METAL__) && defined(USE_32BIT_TICK_T)
+/*
+ * Bare-metal timing note:
+ *
+ * When __BARE_METAL__ and USE_32BIT_TICK_T are both enabled, tick_t uses
+ * 32-bit storage. The selected tick source and tick width together define the
+ * maximum delay interval that can be measured safely in the project.
+ *
+ * Example: with a 1 kHz tick source, uint32_t spans about 49.7 days.
+ * Make sure your largest required delay/timeout remains safe for your chosen
+ * tick source and counter width.
+ */
+typedef uint32_t tick_t;
+#else
+typedef uint64_t tick_t;
 #endif
 
 /**
@@ -213,18 +248,18 @@ void hexdump(const void *data, size_t len, const char *fmt, ...);
 /**
  * @brief Get the time in micro seconds.
  */
-int64_t usec_now();
+tick_t usec_now();
 
 /**
  * @brief Get time elapsed in micro seconds since `last`. Used along with
  * usec_now().
  */
-int64_t usec_since(int64_t last);
+tick_t usec_since(tick_t last);
 
 /**
  * @brief Get the time in milli seconds.
  */
-int64_t millis_now();
+tick_t millis_now();
 
 /**
  * @brief Get time in seconds and micro_seconds
@@ -242,7 +277,7 @@ int add_iso8601_utc_datetime(char *buf, size_t size);
  * @brief Get time elapsed in milli seconds since `last`. Used along with
  * millis_now().
  */
-int64_t millis_since(int64_t last);
+tick_t millis_since(tick_t last);
 
 /**
  * @brief Print the stack trace
