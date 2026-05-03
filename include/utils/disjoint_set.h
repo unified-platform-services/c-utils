@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-#define DISJOINT_SET_MAX 5
+#define DISJOINT_SET_MAX 10
 
 struct disjoint_set {
 	int max_nodes;
