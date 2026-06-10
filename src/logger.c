@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2024 Siddharth Chandrasekaran <sidcha.dev@gmail.com>
+ * Copyright (c) 2020-2026 Siddharth Chandrasekaran <sidcha.dev@gmail.com>
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -59,7 +59,7 @@ static const char *log_level_names[LOG_MAX_LEVEL] = {
 
 static inline void logger_log_set_color(logger_t *ctx, const char *color)
 {
-#if !defined(__BARE_METAL__)
+#if !defined(__BARE_METAL__) && !defined(__ZEPHYR__) && !defined(MYNEWT)
 	size_t ret, len;
 
 	if (ctx->flags & LOGGER_FLAG_NO_COLORS)
@@ -98,7 +98,7 @@ static int terminate_log_line(char *buf, int len)
 
 #define LOG_BUF_LEN 192
 
-__format_printf(5, 6)
+__weak __format_printf(5, 6)
 int __logger_log(logger_t *ctx, int log_level, const char *file, unsigned long line,
 		 const char *fmt, ...)
 {
@@ -114,7 +114,7 @@ int __logger_log(logger_t *ctx, int log_level, const char *file, unsigned long l
 	{
 		file = filename + 1;
 	}
-	
+
 	if (!ctx->cb) {
 		if (log_level < LOG_EMERG ||
 		    log_level >= LOG_MAX_LEVEL ||

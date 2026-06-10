@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Siddharth Chandrasekaran <sidcha.dev@gmail.com>
+ * Copyright (c) 2021-2026 Siddharth Chandrasekaran <sidcha.dev@gmail.com>
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -31,7 +31,7 @@ enum work_status {
 
 typedef struct {
 	queue_node_t node;
-	int64_t slice;
+	tick_t slice;
 	enum work_status status;
 	uint32_t requests;
 
