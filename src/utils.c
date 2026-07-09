@@ -12,12 +12,20 @@
 
 #include <utils/utils.h>
 
+/*
+ * _Static_assert is C11. Pre-C11 compilers reject it at file scope (notably
+ * MSVC's default C mode, which Python's setuptools uses to build the wheel).
+ * Gate the self-test on C11; the IS_ENABLED() macro itself needs only a
+ * standard preprocessor, so skipping the assert loses nothing on those builds.
+ */
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 #define _IS_ENABLED_SELFTEST_ON 1
 _Static_assert(IS_ENABLED(_IS_ENABLED_SELFTEST_ON) == 1,
 	       "IS_ENABLED(): defined-as-1 flag must evaluate to 1");
 _Static_assert(IS_ENABLED(_IS_ENABLED_SELFTEST_OFF) == 0,
 	       "IS_ENABLED(): undefined flag must evaluate to 0");
 #undef _IS_ENABLED_SELFTEST_ON
+#endif
 
 __weak uint32_t rand_u32(void)
 {
