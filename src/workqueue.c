@@ -177,14 +177,26 @@ void workqueue_destroy(workqueue_t *wq)
 	worker_t *w;
 
 	flush_backlog(wq);
-	pthread_mutex_destroy(&wq->backlog_lock);
+
+	/*
+	 * Ask every worker to stop, then join each one before tearing down
+	 * any state it touches. pthread_cancel() only requests termination;
+	 * without the join the worker can still be running when we close its
+	 * event fds, destroy the backlog mutex or free the workers array,
+	 * which is a use-after-free that intermittently crashes at teardown.
+	 */
+	for (i = 0; i < wq->num_workers; i++)
+		pthread_cancel(get_worker(wq, i)->thread);
+
+	for (i = 0; i < wq->num_workers; i++)
+		pthread_join(get_worker(wq, i)->thread, NULL);
 
 	for (i = 0; i < wq->num_workers; i++) {
 		w = get_worker(wq, i);
-		pthread_cancel(w->thread);
 		event_cleanup(&w->event);
 	}
 
+	pthread_mutex_destroy(&wq->backlog_lock);
 	free(wq->workers);
 }
 
