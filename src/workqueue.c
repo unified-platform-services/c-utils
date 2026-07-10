@@ -105,8 +105,16 @@ static void *workqueue_factory(void *arg)
 		w->state = WQ_WORKER_STATE_RUNNING;
 
 		while ((work = get_backlog(wq)) != NULL) {
-			if (work->requests & WQ_REQ_CANCEL_WORK)
+			if (work->requests & WQ_REQ_CANCEL_WORK) {
+				/*
+				 * Completing the work hands ownership back to
+				 * the canceller, which may free() it as soon as
+				 * it observes WQ_WORK_COMPLETE. Don't touch the
+				 * work after this point.
+				 */
 				complete_work(work);
+				continue;
+			}
 			work->status = WQ_WORK_IN_PROGRESS;
 
 			rc = do_work(work);
