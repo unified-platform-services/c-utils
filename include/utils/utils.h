@@ -192,6 +192,21 @@ extern "C" {
 #define PATH_SEPARATOR          '/'
 #endif
 
+/*
+ * Platforms we can detect and serve directly: each has a tick source and an
+ * entropy source that utils implements natively, so no application-supplied
+ * hooks are needed. __BARE_METAL__ on anything else means a target we cannot
+ * identify -- there is no portable way to find a clock or entropy on it, so
+ * such a target must supply them itself.
+ */
+#if defined(ARDUINO) || defined(__ZEPHYR__) || defined(MYNEWT)
+#define UTILS_KNOWN_PLATFORM 1
+#endif
+
+#if defined(__BARE_METAL__) && !defined(UTILS_KNOWN_PLATFORM)
+#define UTILS_UNKNOWN_TARGET 1
+#endif
+
 #if defined(__BARE_METAL__) && defined(USE_32BIT_TICK_T)
 /*
  * Bare-metal timing note:
@@ -210,16 +225,24 @@ typedef uint64_t tick_t;
 #endif
 
 /**
- * @brief Return a non-cryptographic random uint32.
+ * @brief Return a random uint32.
  *
- * Bare-metal builds use an internal xorshift; hosted builds forward to
- * libc rand(). Cryptographic callers must NOT use this.
+ * Entropy depends on the platform: hosted builds forward to libc rand();
+ * Arduino uses the core's hardware TRNG where one exists (ESP32, ESP8266)
+ * and its random() PRNG otherwise; unknown bare-metal targets have no
+ * definition at all and must supply one (a missing one is a link error).
  *
- * Defined as __weak: platforms that can do better (e.g. an STM32 RNG
- * peripheral, an mbedTLS DRBG, /dev/urandom) should provide their own
- * strong override.
+ * Only the TRNG-backed paths are cryptographically strong. Platforms that
+ * can do better (an STM32 RNG peripheral, an mbedTLS DRBG, /dev/urandom)
+ * should override this -- it is __weak wherever it is defined.
  */
+#ifdef UTILS_UNKNOWN_TARGET
+/* Strong declaration: a __weak undefined reference resolves to NULL and
+ * would be called. Keep it strong so a missing definition fails the link. */
+uint32_t rand_u32(void);
+#else
 __weak uint32_t rand_u32(void);
+#endif
 
 /**
  * @brief Return random number between 0 and `limit` both inclusive.
