@@ -181,6 +181,36 @@ extern "C" {
 #define __noreturn              __attribute__((noreturn))
 #endif
 
+#elif defined(ESP_PLATFORM)
+
+#include <esp_compiler.h>  // likely(), unlikely()
+
+/*
+ * ESP-IDF ships its own versions of some of these, so it is detected here
+ * rather than left to the generic branch below, which would define them a
+ * second time.
+ *
+ * likely() and unlikely() are taken from <esp_compiler.h>, included above so
+ * that the SDK's definitions are in effect no matter what else the translation
+ * unit pulls in. Both that header and this one guard with #ifndef, so leaving
+ * it to chance means the first include wins -- and since IDF makes these depend
+ * on CONFIG_COMPILER_OPTIMIZATION_PERF, the same macro could expand to
+ * __builtin_expect() in one translation unit and to (x) in another.
+ *
+ * __weak and __noreturn are guarded because IDF does not define them today but
+ * is under no obligation to keep it that way. On a platform we claim to
+ * support, deferring to the SDK is better than colliding with it later.
+ */
+#ifndef __weak
+#define __weak                  __attribute__((weak))
+#endif
+#ifndef __noreturn
+#define __noreturn              __attribute__((noreturn))
+#endif
+#define __format_printf(x, y)   __attribute__((format(printf, x, y)))
+#define __unreachable()         __builtin_unreachable()
+#define PATH_SEPARATOR          '/'
+
 #else
 
 #define __format_printf(x, y)   __attribute__((format(printf, x, y)))
